@@ -1,0 +1,6 @@
+torch 
+torchvision
+matplotlib
+openvino-dev
+pandas
+opencv-python
