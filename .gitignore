@@ -2,3 +2,4 @@ dataset/preprocessed
 dataset/raw
 venv
 models
+.venv
