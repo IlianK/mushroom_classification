@@ -3,3 +3,7 @@ dataset/raw
 venv
 models
 .venv
+src/segment-anything
+src/old
+.vscode
+zips
