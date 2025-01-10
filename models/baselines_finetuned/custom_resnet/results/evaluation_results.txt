@@ -1,0 +1,32 @@
+Test Loss = 0.3356
+Test Accuracy = 90.14%
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.90      0.97      0.94        37
+           1       0.93      0.87      0.90        47
+           2       0.93      0.98      0.95        43
+           3       0.89      0.97      0.93        34
+           4       0.93      0.77      0.84        35
+           5       0.88      0.88      0.88        40
+           6       0.89      0.83      0.86        30
+           7       0.97      0.97      0.97        35
+           8       0.70      0.78      0.74        27
+           9       0.96      0.96      0.96        27
+
+    accuracy                           0.90       355
+   macro avg       0.90      0.90      0.90       355
+weighted avg       0.90      0.90      0.90       355
+
+Per-Class Accuracy:
+Class 0: 0.97
+Class 1: 0.87
+Class 2: 0.98
+Class 3: 0.97
+Class 4: 0.77
+Class 5: 0.88
+Class 6: 0.83
+Class 7: 0.97
+Class 8: 0.78
+Class 9: 0.96
