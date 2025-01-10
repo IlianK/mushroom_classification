@@ -39,7 +39,7 @@ PREPROCESSED_DIR = os.path.join(DATA_DIR, 'preprocessed')
 CSV_PATH = os.path.join(DATA_DIR, 'csv_mappings', 'train.csv')
 
 MODEL_DIR = os.path.join(ROOT_DIR, 'models')
-BASELINE_DIR = os.path.join(MODEL_DIR, 'baselines_finetuned')
+BASELINE_DIR = os.path.join(MODEL_DIR, 'baselines') #baselines_finetuned # baselines
 
 
 ############### DATA FUNCTIONALITY ###############
