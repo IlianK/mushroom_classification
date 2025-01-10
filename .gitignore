@@ -2,6 +2,5 @@
 venv
 .vscode
 dataset
-models
 via-2.0.12
 src/__pycache__
