@@ -39,8 +39,8 @@ PREPROCESSED_DIR = os.path.join(DATA_DIR, 'preprocessed')
 CSV_PATH = os.path.join(DATA_DIR, 'csv_mappings', 'train.csv')
 
 MODEL_DIR = os.path.join(ROOT_DIR, 'models')
-BASELINE_DIR = os.path.join(MODEL_DIR, 'baselines') #baselines_finetuned # baselines
-
+BASELINE_DIR = os.path.join(MODEL_DIR, 'baselines') 
+BASELINE_FINE_DIR = os.path.join(MODEL_DIR, 'baselines_finetuned')
 
 ############### DATA FUNCTIONALITY ###############
 
@@ -361,6 +361,38 @@ def get_custom_resnet(num_classes, device):
 
 
 ########### MODEL HELPERS ##############
+def load_model_for_explaining(model_type, num_classes, device, finetuned=True):
+    model_mapping = {
+        'alexnet': lambda: get_alexnet_model(num_classes, device),
+        'resnet': lambda: get_resnet_model(num_classes, device),
+        'vgg16': lambda: get_vgg16_model(num_classes, device),
+        'densenet': lambda: get_densenet_model(num_classes, device),
+        'efficientnet': lambda: get_efficientnet_model(num_classes, device),
+        'custom_alexnet': lambda: get_custom_alexnet(num_classes, device),
+        'custom_resnet': lambda: get_custom_resnet(num_classes, device),
+    }
+
+    if model_type not in model_mapping:
+        raise ValueError(f"Unsupported model type: {model_type}")
+
+    model = model_mapping[model_type]()
+
+    baseline_dir = BASELINE_FINE_DIR if finetuned else BASELINE_DIR
+
+    model_path = os.path.join(baseline_dir, model_type, 'results', f'{model_type}.pth')
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found at: {model_path}")
+
+    checkpoint = torch.load(model_path, map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+
+    model = model.to(device)
+    model.eval()
+
+    print(f"Model '{model_type}' loaded successfully from {model_path}")
+    return model
+
+
 def get_optimizer_criterion_scheduler(
     model, train_loader, epochs, lr=0.001, weight_decay=1e-5, momentum=0.9, scheduler_type="StepLR"
 ):
@@ -390,9 +422,10 @@ def get_optimizer_criterion_scheduler(
     return optimizer, criterion, scheduler
 
 
-def set_model_for_training(model_type, train_loader, epochs, learning_rate, num_classes, device, scheduler_type="StepLR"):
-    base_log_path = os.path.join(BASELINE_DIR, model_type, 'log')
-    base_result_path = os.path.join(BASELINE_DIR, model_type, 'results')
+def set_model_for_training(model_type, train_loader, epochs, learning_rate, num_classes, device, scheduler_type="StepLR", finetuned=True):
+    baseline_dir = BASELINE_FINE_DIR if finetuned else BASELINE_DIR
+    base_log_path = os.path.join(baseline_dir, model_type, 'log')
+    base_result_path = os.path.join(baseline_dir, model_type, 'results')
 
     if os.path.exists(base_log_path):
         shutil.rmtree(base_log_path)
