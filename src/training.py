@@ -135,11 +135,15 @@ def train_on_epoch(model, train_loader, criterion, optimizer, device, epoch, wri
 
         # Log loss and accuracy per batch to TensorBoard
         batch_accuracy = 100.0 * correct / total
-        writer.add_scalar('Train/Loss', loss.item(), epoch * len(train_loader) + batch_idx)
-        writer.add_scalar('Train/Accuracy', batch_accuracy, epoch * len(train_loader) + batch_idx)
+        writer.add_scalar('Train/BatchLoss', loss.item(), epoch * len(train_loader) + batch_idx)
+        writer.add_scalar('Train/BatchAccuracy', batch_accuracy, epoch * len(train_loader) + batch_idx)
 
     train_accuracy = 100.0 * correct / total
     avg_train_loss = train_loss / len(train_loader)
+
+    # Log overall loss and accuracy per epoch
+    writer.add_scalar('Train/Loss', avg_train_loss, epoch)
+    writer.add_scalar('Train/Accuracy', train_accuracy, epoch)
 
     # Log the learning rate
     for param_group in optimizer.param_groups:
@@ -172,11 +176,15 @@ def validate_on_epoch(model, val_loader, criterion, optimizer, device, epoch, wr
 
             # Log loss and accuracy per batch to TensorBoard
             batch_accuracy = 100.0 * correct / total
-            writer.add_scalar('Validation/Loss', loss.item(), epoch * len(val_loader) + batch_idx)
-            writer.add_scalar('Validation/Accuracy', batch_accuracy, epoch * len(val_loader) + batch_idx)
+            writer.add_scalar('Validation/BatchLoss', loss.item(), epoch * len(val_loader) + batch_idx)
+            writer.add_scalar('Validation/BatchAccuracy', batch_accuracy, epoch * len(val_loader) + batch_idx)
 
     val_accuracy = 100.0 * correct / total
     avg_val_loss = val_loss / len(val_loader)
+
+    # Log overall loss and accuracy per epoch
+    writer.add_scalar('Validation/Loss', avg_val_loss, epoch)
+    writer.add_scalar('Validation/Accuracy', val_accuracy, epoch)
 
     # Early stopping 
     if avg_val_loss < best_val_loss:
@@ -305,47 +313,22 @@ class EnhancedResNet(nn.Module):
     
 
 class EnhancedAlexNet(nn.Module):
-    def __init__(self, num_classes=10):
+    def __init__(self, num_classes=10, dropout_prob=0.5):
         super(EnhancedAlexNet, self).__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2),  # Layer 1
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2),             # Layer 2
-            nn.Conv2d(64, 192, kernel_size=5, padding=2),         # Layer 3
-            nn.BatchNorm2d(192),                       # BatchNorm added
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2),             # Layer 4
-            nn.Conv2d(192, 384, kernel_size=3, padding=1),        # Layer 5
-            nn.BatchNorm2d(384),                       # BatchNorm added
-            nn.ReLU(inplace=True),
-            nn.Conv2d(384, 256, kernel_size=3, padding=1),        # Layer 6
-            nn.BatchNorm2d(256),                       # BatchNorm added
-            nn.ReLU(inplace=True),
-            nn.Conv2d(256, 256, kernel_size=3, padding=1),        # Layer 7
-            nn.BatchNorm2d(256),                       # BatchNorm added
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2),             # Layer 8
-        )
 
-        # Pooling layer to ensure consistent output size
-        self.avgpool = nn.AdaptiveAvgPool2d((6, 6))
-
-        # Classifier layers with Dropout for regularization
-        self.classifier = nn.Sequential(
-            nn.Dropout(p=0.5),                    # Dropout 1
-            nn.Linear(256 * 6 * 6, 4096),            # Fully Connected Layer 1
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),                    # Dropout 2
-            nn.Linear(4096, 4096),                  # Fully Connected Layer 2
-            nn.ReLU(inplace=True),
-            nn.Linear(4096, num_classes),               # Fully Connected Layer 3
-        )
-
+        self.alexnet = models.alexnet(pretrained=True)  
+        self.alexnet.classifier = nn.Identity()
+        self.dropout = nn.Dropout(p=dropout_prob)
+        
+        self.fc1 = nn.Linear(256 * 6 * 6, 1024)  
+        self.fc2 = nn.Linear(1024, num_classes)
+        
     def forward(self, x):
-        x = self.features(x)
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)  # Flatten for fully connected layers
-        x = self.classifier(x)
+        x = self.alexnet.features(x)  
+        x = torch.flatten(x, 1)      
+        x = self.dropout(x)           
+        x = torch.relu(self.fc1(x))  
+        x = self.fc2(x)              
         return x
 
 

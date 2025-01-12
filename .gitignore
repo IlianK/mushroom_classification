@@ -5,3 +5,4 @@ dataset
 via-2.0.12
 src/__pycache__
 *.pth
+models/zipped
