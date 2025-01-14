@@ -297,12 +297,12 @@ class EnhancedResNet(nn.Module):
     def __init__(self, num_classes=10, dropout_prob=0.5):
         super(EnhancedResNet, self).__init__()
 
-        self.resnet = models.resnet50(pretrained=True)  
+        self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Identity()
         self.dropout = nn.Dropout(p=dropout_prob)
         
-        self.fc1 = nn.Linear(2048, 1024)  
-        self.fc2 = nn.Linear(1024, num_classes)
+        self.fc1 = nn.Linear(2048, 2048)  
+        self.fc2 = nn.Linear(2048, num_classes)
         
     def forward(self, x):
         x = self.resnet(x)  
