@@ -313,15 +313,15 @@ class EnhancedResNet(nn.Module):
     
 
 class EnhancedAlexNet(nn.Module):
-    def __init__(self, num_classes=10, dropout_prob=0.5):
+    def __init__(self, num_classes=10, dropout_prob=0.55):
         super(EnhancedAlexNet, self).__init__()
 
         self.alexnet = models.alexnet(pretrained=True)  
         self.alexnet.classifier = nn.Identity()
         self.dropout = nn.Dropout(p=dropout_prob)
         
-        self.fc1 = nn.Linear(256 * 6 * 6, 1024)  
-        self.fc2 = nn.Linear(1024, num_classes)
+        self.fc1 = nn.Linear(256 * 6 * 6, 4196)  
+        self.fc2 = nn.Linear(4196, num_classes)
         
     def forward(self, x):
         x = self.alexnet.features(x)  
