@@ -111,46 +111,57 @@ def plot_accuracy(acc_metrics, use_batch_steps=True, save_path=None):
 
 
 # COmpare all models based on their event files
-def compare_models(log_dir_base, model_types, save_path=None):  
+def compare_models(log_dir_base, model_types, use_batch_steps=False, save_path=None):
+    """
+    Compare all models based on their event files.
+
+    Parameters:
+        log_dir_base (str): Base directory containing model logs.
+        model_types (list): List of model type subdirectories to compare.
+        use_batch_steps (bool): Whether to use batch steps or epoch steps.
+        save_path (str): Path to save comparison plots (optional).
+    """
     all_losses = {}
     all_accuracies = {}
-    
+
     for model_type in model_types:
         log_dir = os.path.join(log_dir_base, model_type, 'log')
         try:
             metrics = extract_all_metrics(log_dir)
             loss_accuracy_metrics = extract_loss_and_accuracy(metrics)
-            
-            all_losses[model_type] = {
-                "train": loss_accuracy_metrics.get("train_loss", {}),
-                "val": loss_accuracy_metrics.get("val_loss", {}),
-                "train_batch": loss_accuracy_metrics.get("train_batch_loss", {}),
-                "val_batch": loss_accuracy_metrics.get("val_batch_loss", {}),
-            }
-            
-            all_accuracies[model_type] = {
-                "train": loss_accuracy_metrics.get("train_accuracy", {}),
-                "val": loss_accuracy_metrics.get("val_accuracy", {}),
-                "train_batch": loss_accuracy_metrics.get("train_batch_accuracy", {}),
-                "val_batch": loss_accuracy_metrics.get("val_batch_accuracy", {}),
-            }
+
+            if use_batch_steps:
+                all_losses[model_type] = {
+                    "train": loss_accuracy_metrics.get("train_batch_loss", {}),
+                    "val": loss_accuracy_metrics.get("val_batch_loss", {}),
+                }
+                all_accuracies[model_type] = {
+                    "train": loss_accuracy_metrics.get("train_batch_accuracy", {}),
+                    "val": loss_accuracy_metrics.get("val_batch_accuracy", {}),
+                }
+            else:
+                all_losses[model_type] = {
+                    "train": loss_accuracy_metrics.get("train_loss", {}),
+                    "val": loss_accuracy_metrics.get("val_loss", {}),
+                }
+                all_accuracies[model_type] = {
+                    "train": loss_accuracy_metrics.get("train_accuracy", {}),
+                    "val": loss_accuracy_metrics.get("val_accuracy", {}),
+                }
         except Exception as e:
             print(f"Error processing model '{model_type}': {e}")
             continue
-    
+
+    # Plot Loss Comparison
     plt.figure(figsize=(12, 6))
     for model_type, losses in all_losses.items():
-        if "steps" in losses["train_batch"] and "values" in losses["train_batch"]:
-            plt.plot(losses["train_batch"]["steps"], losses["train_batch"]["values"], label=f'{model_type} Train Batch Loss', linestyle='-')
         if "steps" in losses["train"] and "values" in losses["train"]:
             plt.plot(losses["train"]["steps"], losses["train"]["values"], label=f'{model_type} Train Loss', linestyle='--')
-        
-        if "steps" in losses["val_batch"] and "values" in losses["val_batch"]:
-            plt.plot(losses["val_batch"]["steps"], losses["val_batch"]["values"], label=f'{model_type} Validation Batch Loss', linestyle='--')
         if "steps" in losses["val"] and "values" in losses["val"]:
             plt.plot(losses["val"]["steps"], losses["val"]["values"], label=f'{model_type} Validation Loss', linestyle='-.')
 
-    plt.xlabel("Steps")
+    steps_label = "Batch Steps" if use_batch_steps else "Epoch"
+    plt.xlabel(steps_label)
     plt.ylabel("Loss")
     plt.title("Loss Comparison Across Models")
     plt.legend()
@@ -159,20 +170,16 @@ def compare_models(log_dir_base, model_types, save_path=None):
         os.makedirs(save_path, exist_ok=True)
         plt.savefig(os.path.join(save_path, "comparison_loss.png"))
     plt.show()
-    
+
+    # Plot Accuracy Comparison
     plt.figure(figsize=(12, 6))
     for model_type, accuracies in all_accuracies.items():
-        if "steps" in accuracies["train_batch"] and "values" in accuracies["train_batch"]:
-            plt.plot(accuracies["train_batch"]["steps"], accuracies["train_batch"]["values"], label=f'{model_type} Train Batch Accuracy', linestyle='-')
         if "steps" in accuracies["train"] and "values" in accuracies["train"]:
             plt.plot(accuracies["train"]["steps"], accuracies["train"]["values"], label=f'{model_type} Train Accuracy', linestyle='--')
-        
-        if "steps" in accuracies["val_batch"] and "values" in accuracies["val_batch"]:
-            plt.plot(accuracies["val_batch"]["steps"], accuracies["val_batch"]["values"], label=f'{model_type} Validation Batch Accuracy', linestyle='--')
         if "steps" in accuracies["val"] and "values" in accuracies["val"]:
             plt.plot(accuracies["val"]["steps"], accuracies["val"]["values"], label=f'{model_type} Validation Accuracy', linestyle='-.')
 
-    plt.xlabel("Steps")
+    plt.xlabel(steps_label)
     plt.ylabel("Accuracy")
     plt.title("Accuracy Comparison Across Models")
     plt.legend()

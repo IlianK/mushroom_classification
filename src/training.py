@@ -2,22 +2,28 @@ import os
 import shutil
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
+from tqdm import tqdm
 from IPython.display import display
 
 from sklearn.metrics import (
     accuracy_score,
+    auc,
     classification_report,
-    confusion_matrix
+    confusion_matrix,
+    precision_recall_curve,
+    roc_curve,
+    average_precision_score
 )
 from sklearn.model_selection import train_test_split
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import OneCycleLR, StepLR
 from torch.utils.data import DataLoader, Dataset, Subset
@@ -26,7 +32,6 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import models, transforms
 from torchvision.models import AlexNet_Weights
 
-from tqdm import tqdm
 
 
 ############## PATHS ##################
@@ -232,6 +237,7 @@ def evaluate_model(model, test_loader, criterion, device):
     total = 0
     all_labels = []
     all_predictions = []
+    all_pred_probs = []  # List to store the class probabilities
 
     with torch.no_grad():
         for data in tqdm(test_loader, desc="[Test]"):
@@ -241,13 +247,17 @@ def evaluate_model(model, test_loader, criterion, device):
             loss = criterion(outputs, labels)
 
             test_loss += loss.item()
-            _, predicted = outputs.max(1)
+            _, predicted = outputs.max(1)  # Predicted class label
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
-            # Store preds and labels for plots
+            # Store labels and predictions for plots
             all_labels.extend(labels.cpu().numpy())
             all_predictions.extend(predicted.cpu().numpy())
+
+            # Store the class probabilities (softmax output)
+            probs = F.softmax(outputs, dim=1)  # Apply softmax along the class dimension
+            all_pred_probs.extend(probs.cpu().numpy())  # Store probabilities as numpy arrays
 
     test_accuracy = 100.0 * correct / total
     avg_test_loss = test_loss / len(test_loader)
@@ -255,7 +265,7 @@ def evaluate_model(model, test_loader, criterion, device):
     print(f"Test Loss = {avg_test_loss:.4f}")
     print(f"Test Accuracy = {test_accuracy:.2f}%")
     
-    return avg_test_loss, test_accuracy, all_labels, all_predictions
+    return avg_test_loss, test_accuracy, all_labels, all_predictions, all_pred_probs
 
 
 ############### PRETRAINED MODELS ###############
@@ -500,6 +510,46 @@ def per_class_accuracy(all_labels, all_predictions, num_classes, class_names, sa
     plt.show()
 
     return class_accuracies
+
+
+def plot_roc_curve(all_labels, all_pred_probs, num_classes, save_path=None):
+    plt.figure(figsize=(10, 8))
+    all_labels = np.array(all_labels)
+    all_pred_probs = np.array(all_pred_probs)
+    for i in range(num_classes):
+        binary_labels = (all_labels == i).astype(int)
+        class_probs = all_pred_probs[:, i]
+        fpr, tpr, _ = roc_curve(binary_labels, class_probs)
+        roc_auc = auc(fpr, tpr)
+        plt.plot(fpr, tpr, label=f'Class {i} (AUC = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], 'k--', label='Random Guessing')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curves')
+    plt.legend(loc='lower right')
+    if save_path:
+        plt.savefig(f"{save_path}/roc_curve.png")
+    plt.show()
+
+
+def plot_precision_recall_curve(all_labels, all_pred_probs, num_classes, save_path=None):
+    plt.figure(figsize=(10, 8))
+    all_labels = np.array(all_labels)
+    all_pred_probs = np.array(all_pred_probs)
+    for i in range(num_classes):
+        binary_labels = (all_labels == i).astype(int)
+        class_probs = all_pred_probs[:, i]
+        precision, recall, _ = precision_recall_curve(binary_labels, class_probs)
+        average_precision = average_precision_score(binary_labels, class_probs)
+        plt.plot(recall, precision, label=f'Class {i} (AP = {average_precision:.2f})')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curves')
+    plt.legend(loc='lower left')
+    if save_path:
+        plt.savefig(f"{save_path}/precision_recall_curve.png")
+    plt.show()
+
 
 
 def display_classification_report(all_labels, all_predictions):
