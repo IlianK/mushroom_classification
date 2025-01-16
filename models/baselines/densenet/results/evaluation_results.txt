@@ -1,4 +1,4 @@
-Test Loss = 2.4134
+Test Loss = 2.4133
 Test Accuracy = 13.24%
 
 Classification Report:

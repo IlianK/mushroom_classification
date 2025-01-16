@@ -415,15 +415,10 @@ def get_optimizer_criterion_scheduler(
     return optimizer, criterion, scheduler
 
 
-def set_model_for_training(model_type, train_loader, epochs, learning_rate, num_classes, device, scheduler_type="StepLR", finetuned=True):
+def set_model_for_training(model_type, train_loader, epochs, learning_rate, num_classes, device, scheduler_type="StepLR", finetuned=True, write=False):
     baseline_dir = BASELINE_FINE_DIR if finetuned else BASELINE_DIR
     base_log_path = os.path.join(baseline_dir, model_type, 'log')
     base_result_path = os.path.join(baseline_dir, model_type, 'results')
-
-    if os.path.exists(base_log_path):
-        shutil.rmtree(base_log_path)
-    os.makedirs(base_log_path, exist_ok=True)
-    os.makedirs(base_result_path, exist_ok=True)
 
     if model_type == 'alexnet':
         model = get_alexnet_model(num_classes, device)
@@ -453,7 +448,14 @@ def set_model_for_training(model_type, train_loader, epochs, learning_rate, num_
         model, train_loader, epochs, lr=learning_rate, scheduler_type=scheduler_type
     )
     
-    writer = SummaryWriter(log_dir=base_log_path)
+    writer = None
+    if write:
+        if os.path.exists(base_log_path):
+            shutil.rmtree(base_log_path)
+        os.makedirs(base_log_path, exist_ok=True)
+        os.makedirs(base_result_path, exist_ok=True)
+
+        writer = SummaryWriter(log_dir=base_log_path)
     print(model)
     
     return model, optimizer, criterion, scheduler, base_result_path, writer
