@@ -295,6 +295,10 @@ def get_efficientnet_model(num_classes, device):
 
 ############### CUSTOM MODELS ################
 
+import torch
+import torch.nn as nn
+from torchvision import models
+
 class EnhancedResNet(nn.Module):
     def __init__(self, num_classes=10, dropout_prob=0.5):
         super(EnhancedResNet, self).__init__()
