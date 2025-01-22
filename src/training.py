@@ -190,7 +190,6 @@ def validate_on_epoch(model, val_loader, criterion, optimizer, device, epoch, wr
         best_val_loss = avg_val_loss
         epochs_no_improve = 0
         save_model(model, optimizer, epoch, avg_val_loss, val_accuracy, save_path)
-        print(f"Model saved to {save_path}")
     else:
         epochs_no_improve += 1
 
@@ -336,8 +335,8 @@ class EnhancedAlexNet(nn.Module):
         for param in self.alexnet.parameters():
             param.requires_grad = False
         
-        for param in self.alexnet.classifier[6:].parameters():
-            param.requires_grad = True
+        for param in self.alexnet.features.parameters():
+            param.requires_grad = False
 
         self.dropout = nn.Dropout(p=dropout_prob)
         self.fc1 = nn.Linear(256 * 6 * 6, 4096)
@@ -357,7 +356,7 @@ class EnhancedAlexNet(nn.Module):
         x = self.bn2(x)
         x = self.fc3(x)
         return x
-    
+
 
 def get_custom_alexnet(num_classes, device):
     model = EnhancedAlexNet(num_classes)
