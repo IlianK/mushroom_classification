@@ -295,14 +295,9 @@ def get_efficientnet_model(num_classes, device):
 
 ############### CUSTOM MODELS ################
 
-import torch
-import torch.nn as nn
-from torchvision import models
-
 class EnhancedResNet(nn.Module):
     def __init__(self, num_classes=10, dropout_prob=0.5):
         super(EnhancedResNet, self).__init__()
-
         self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Identity()
 
@@ -313,15 +308,18 @@ class EnhancedResNet(nn.Module):
             param.requires_grad = True
 
         self.dropout = nn.Dropout(p=dropout_prob)
-        self.fc1 = nn.Linear(2048, 2048)
-        self.fc2 = nn.Linear(2048, num_classes)
+        self.fc1 = nn.Linear(2048, 1024)
+        self.bn1 = nn.BatchNorm1d(1024)
+        self.fc2 = nn.Linear(1024, num_classes)
 
     def forward(self, x):
         x = self.resnet(x)
         x = self.dropout(x)
         x = torch.relu(self.fc1(x))
+        x = self.bn1(x)
         x = self.fc2(x)
         return x
+
 
 class EnhancedAlexNet(nn.Module):
     def __init__(self, num_classes=10, dropout_prob=0.55):
