@@ -1,11 +1,9 @@
 import os
+import torch
 from PIL import Image
-import numpy as np
 import random
 import matplotlib.pyplot as plt
-import torch
-
-############ LOAD AND PREPROCESS IMAGE DATA ###############
+from torchvision import transforms
 
 def load_image(image_path):
     try:
@@ -15,23 +13,28 @@ def load_image(image_path):
     except Exception as e:
         print(f"Error loading image {image_path}: {e}")
         return None
-    
-
-def preprocess_image(img, target_size=(224, 224)):
-    img = img.resize(target_size)
-    img = np.array(img) / 255.0
-    return img
 
 
-def load_and_process_image(image_path, target_size=(224, 224)):
+train_transforms = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(20),
+    transforms.ColorJitter(brightness=0.3, contrast=0.3),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+
+def load_and_process_image(image_path):
     img = load_image(image_path)
+    if img is None:
+        return None
     if img.mode != 'RGB':  
         img = img.convert('RGB')  
-    img = preprocess_image(img, target_size)
-    return img
+    return train_transforms(img)
 
 
-def preprocess_samples(n, raw_dir, target_size=(224, 224)):
+def preprocess_samples(n, raw_dir):
     image_files = [f for f in os.listdir(raw_dir) if f.endswith('.jpg')]
     sample_images = random.sample(image_files, n)
 
@@ -47,7 +50,7 @@ def preprocess_samples(n, raw_dir, target_size=(224, 224)):
             continue
 
         original_images.append(img) 
-        processed_img = load_and_process_image(image_path, target_size)
+        processed_img = load_and_process_image(image_path)
         processed_images.append(processed_img)  
 
     return original_images, processed_images
@@ -69,12 +72,14 @@ def show_images(original_images, processed_images, axis_on=False):
         for i in range(start_idx, end_idx):
             original_idx = i - start_idx 
             
-            # Show original 
             axes[original_idx].imshow(original_images[i])
             axes[original_idx].set_title(f'Original {i + 1}')
             
-            # Show processed
-            axes[original_idx + len(axes) // 2].imshow(processed_images[i])
+            processed_img = processed_images[i].permute(1, 2, 0).numpy()
+            processed_img = (processed_img * [0.229, 0.224, 0.225]) + [0.485, 0.456, 0.406]
+            processed_img = processed_img.clip(0, 1)
+            
+            axes[original_idx + len(axes) // 2].imshow(processed_img)
             axes[original_idx + len(axes) // 2].set_title(f'Processed {i + 1}')
             
             if not axis_on:
@@ -85,12 +90,12 @@ def show_images(original_images, processed_images, axis_on=False):
         plt.show()
 
 
-def verify_preprocessing_sample(n, raw_dir, target_size=(224, 224), axis_on=False):
-    original_images, processed_images = preprocess_samples(n, raw_dir, target_size)
+def verify_preprocessing_sample(n, raw_dir, axis_on=False):
+    original_images, processed_images = preprocess_samples(n, raw_dir)
     show_images(original_images, processed_images, axis_on)
 
 
-def preprocess_and_save_as_tensors(raw_dir, preprocessed_dir, target_size=(224, 224)):
+def preprocess_and_save_as_tensors(raw_dir, preprocessed_dir):
     if not os.path.exists(preprocessed_dir):
         os.makedirs(preprocessed_dir) 
 
@@ -98,16 +103,11 @@ def preprocess_and_save_as_tensors(raw_dir, preprocessed_dir, target_size=(224, 
 
     for image_file in image_files:
         image_path = os.path.join(raw_dir, image_file)
-
         try:
-            # Preprocess & convert to tensor
-            img = load_and_process_image(image_path, target_size) 
-            tensor_img = torch.tensor(img, dtype=torch.float32).permute(2, 0, 1) 
-
-            # Save as a .pt
-            tensor_path = os.path.join(preprocessed_dir, image_file.replace('.jpg', '.pt'))
-            torch.save(tensor_img, tensor_path)
-            print(f"Processed and saved as tensor: {tensor_path}")
-
+            tensor_img = load_and_process_image(image_path)
+            if tensor_img is not None:
+                tensor_path = os.path.join(preprocessed_dir, image_file.replace('.jpg', '.pt'))
+                torch.save(tensor_img, tensor_path)
+                print(f"Processed and saved: {tensor_path}")
         except Exception as e:
             print(f"Error processing {image_file}: {e}")

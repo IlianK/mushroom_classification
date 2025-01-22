@@ -138,7 +138,6 @@ def train_on_epoch(model, train_loader, criterion, optimizer, device, epoch, wri
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
 
-        # Log loss and accuracy per batch to TensorBoard
         batch_accuracy = 100.0 * correct / total
         writer.add_scalar('Train/BatchLoss', loss.item(), epoch * len(train_loader) + batch_idx)
         writer.add_scalar('Train/BatchAccuracy', batch_accuracy, epoch * len(train_loader) + batch_idx)
@@ -146,15 +145,12 @@ def train_on_epoch(model, train_loader, criterion, optimizer, device, epoch, wri
     train_accuracy = 100.0 * correct / total
     avg_train_loss = train_loss / len(train_loader)
 
-    # Log overall loss and accuracy per epoch
     writer.add_scalar('Train/Loss', avg_train_loss, epoch)
     writer.add_scalar('Train/Accuracy', train_accuracy, epoch)
 
-    # Log the learning rate
     for param_group in optimizer.param_groups:
         writer.add_scalar('Train/Learning Rate', param_group['lr'], epoch)
 
-    # Step the scheduler
     if scheduler:
         scheduler.step()
 
@@ -179,7 +175,6 @@ def validate_on_epoch(model, val_loader, criterion, optimizer, device, epoch, wr
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
-            # Log loss and accuracy per batch to TensorBoard
             batch_accuracy = 100.0 * correct / total
             writer.add_scalar('Validation/BatchLoss', loss.item(), epoch * len(val_loader) + batch_idx)
             writer.add_scalar('Validation/BatchAccuracy', batch_accuracy, epoch * len(val_loader) + batch_idx)
@@ -187,7 +182,6 @@ def validate_on_epoch(model, val_loader, criterion, optimizer, device, epoch, wr
     val_accuracy = 100.0 * correct / total
     avg_val_loss = val_loss / len(val_loader)
 
-    # Log overall loss and accuracy per epoch
     writer.add_scalar('Validation/Loss', avg_val_loss, epoch)
     writer.add_scalar('Validation/Accuracy', val_accuracy, epoch)
 
@@ -237,7 +231,7 @@ def evaluate_model(model, test_loader, criterion, device):
     total = 0
     all_labels = []
     all_predictions = []
-    all_pred_probs = []  # List to store the class probabilities
+    all_pred_probs = [] 
 
     with torch.no_grad():
         for data in tqdm(test_loader, desc="[Test]"):
@@ -247,17 +241,15 @@ def evaluate_model(model, test_loader, criterion, device):
             loss = criterion(outputs, labels)
 
             test_loss += loss.item()
-            _, predicted = outputs.max(1)  # Predicted class label
+            _, predicted = outputs.max(1)  
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
-            # Store labels and predictions for plots
             all_labels.extend(labels.cpu().numpy())
             all_predictions.extend(predicted.cpu().numpy())
 
-            # Store the class probabilities (softmax output)
-            probs = F.softmax(outputs, dim=1)  # Apply softmax along the class dimension
-            all_pred_probs.extend(probs.cpu().numpy())  # Store probabilities as numpy arrays
+            probs = F.softmax(outputs, dim=1) 
+            all_pred_probs.extend(probs.cpu().numpy())  
 
     test_accuracy = 100.0 * correct / total
     avg_test_loss = test_loss / len(test_loader)
@@ -309,36 +301,47 @@ class EnhancedResNet(nn.Module):
 
         self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Identity()
+
+        for param in self.resnet.parameters():
+            param.requires_grad = False
+        
+        for param in self.resnet.layer4.parameters():
+            param.requires_grad = True
+
         self.dropout = nn.Dropout(p=dropout_prob)
-        
-        self.fc1 = nn.Linear(2048, 2048)  
+        self.fc1 = nn.Linear(2048, 2048)
         self.fc2 = nn.Linear(2048, num_classes)
-        
+
     def forward(self, x):
-        x = self.resnet(x)  
-        x = self.dropout(x) 
-        x = torch.relu(self.fc1(x)) 
-        x = self.fc2(x)  
+        x = self.resnet(x)
+        x = self.dropout(x)
+        x = torch.relu(self.fc1(x))
+        x = self.fc2(x)
         return x
-    
 
 class EnhancedAlexNet(nn.Module):
     def __init__(self, num_classes=10, dropout_prob=0.55):
         super(EnhancedAlexNet, self).__init__()
 
-        self.alexnet = models.alexnet(pretrained=True)  
+        self.alexnet = models.alexnet(pretrained=True)
         self.alexnet.classifier = nn.Identity()
+
+        for param in self.alexnet.parameters():
+            param.requires_grad = False
+        
+        for param in self.alexnet.classifier[6:].parameters():
+            param.requires_grad = True
+
         self.dropout = nn.Dropout(p=dropout_prob)
-        
-        self.fc1 = nn.Linear(256 * 6 * 6, 4196)  
-        self.fc2 = nn.Linear(4196, num_classes)
-        
+        self.fc1 = nn.Linear(256 * 6 * 6, 4096)
+        self.fc2 = nn.Linear(4096, num_classes)
+
     def forward(self, x):
-        x = self.alexnet.features(x)  
-        x = torch.flatten(x, 1)      
-        x = self.dropout(x)           
-        x = torch.relu(self.fc1(x))  
-        x = self.fc2(x)              
+        x = self.alexnet.features(x)
+        x = torch.flatten(x, 1)
+        x = self.dropout(x)
+        x = torch.relu(self.fc1(x))
+        x = self.fc2(x)
         return x
 
 

@@ -215,28 +215,45 @@ def save_dimensionality_reduction_results(result, class_labels, method_name, pat
     print(f"{method_name} results saved in {path}")
 
 
-def visualize_results(reduced_data, clusters, class_labels, technique="PCA", n_clusters=10, save_path=None):
+def visualize_results(reduced_data, clusters, class_labels, image_names, technique="PCA", n_clusters=10, save_path=None):
     if reduced_data.shape[1] == 2:
         df = pd.DataFrame(reduced_data, columns=["Component 1", "Component 2"])
     elif reduced_data.shape[1] == 3:
         df = pd.DataFrame(reduced_data, columns=["Component 1", "Component 2", "Component 3"])
     else:
         raise ValueError("The reduced data must be 2D or 3D.")
-
+    
     df["Cluster"] = clusters
-    df["Class"] = class_labels  
+    df["Class"] = class_labels
+    df["ImageName"] = image_names  
     
     if reduced_data.shape[1] == 2:
-        fig = px.scatter(df, x="Component 1", y="Component 2", color="Cluster", hover_data=["Class"],
-                         title=f'{technique} Clustering ({n_clusters} Clusters)', color_continuous_scale='Viridis')
+        fig = px.scatter(
+            df,
+            x="Component 1",
+            y="Component 2",
+            color="Cluster",
+            hover_data=["Class", "ImageName"],  
+            title=f'{technique} Clustering ({n_clusters} Clusters)',
+            color_continuous_scale='Viridis'
+        )
     else:
-        fig = px.scatter_3d(df, x="Component 1", y="Component 2", z="Component 3", color="Cluster", hover_data=["Class"],
-                            title=f'{technique} 3D Clustering ({n_clusters} Clusters)', color_continuous_scale='Viridis')
+        fig = px.scatter_3d(
+            df,
+            x="Component 1",
+            y="Component 2",
+            z="Component 3",
+            color="Cluster",
+            hover_data=["Class", "ImageName"],  
+            title=f'{technique} 3D Clustering ({n_clusters} Clusters)',
+            color_continuous_scale='Viridis'
+        )
     
     if save_path:
         os.makedirs(save_path, exist_ok=True)
-        file_path = os.path.join(save_path, f"{technique}_clustering_{n_clusters}_clusters.png")
-        fig.write_image(file_path)
+        file_path = os.path.join(save_path, f"{technique}_clustering_{n_clusters}_clusters.html")
+        fig.write_html(file_path)  
+        print(f"Interactive plot saved at {file_path}")
     else:
         fig.show()
 
@@ -335,39 +352,68 @@ def plot_pixel_intensity_per_class(image_dict, mushroom_data):
     plt.show()
 
 
-def cluster_per_class(mushroom_data, image_dict, class_labels, n_clusters=10, path=EXPLORATION_PATH):
-    unique_classes = mushroom_data['ClassName'].unique()
+def apply_dimensionality_reduction(scaled_images, method):
+    if method == 'PCA':
+        reduced_result, _ = apply_pca(scaled_images)
+    elif method == 't-SNE':
+        reduced_result, _ = apply_tsne(scaled_images)
+    elif method == 'UMAP':
+        reduced_result, _ = apply_umap(scaled_images)
+    else:
+        raise ValueError(f"Unsupported method: {method}")
+    
+    return reduced_result
 
-    for class_name in unique_classes:
-        # Filter data for the class
-        class_data = mushroom_data[mushroom_data['ClassName'] == class_name]
-        
-        # Get image filenames for the class
-        image_filenames = get_image_filenames(mushroom_data, class_name, num_images=len(class_data))
-        class_image_dict = {img_name: image_dict[img_name] for img_name in image_filenames}
-        
-        # Flatten and scale images for clustering
-        flattened_images = resize_and_flatten_images(class_image_dict)
-        scaled_images = standardize_data(flattened_images)
 
-        # Dimensionality Reduction (PCA, t-SNE, UMAP)
-        pca_result, pca = apply_pca(scaled_images, n_components=2)
-        tsne_result, tsne = apply_tsne(scaled_images, n_components=2, perplexity=30)
-        umap_result, umap = apply_umap(scaled_images, n_components=2, n_neighbors=15, min_dist=0.1)
+def flatten_and_scale_images(image_dict, mushroom_data, class_name):
+    class_images = mushroom_data[mushroom_data['ClassName'] == class_name]['Image']
+    selected_images = [f"{int(img_id):05}.jpg" for img_id in class_images if f"{int(img_id):05}.jpg" in image_dict]
+    flattened_images = [
+        np.array(image_dict[img_name].convert("RGB").resize((224, 224))).flatten() 
+        for img_name in selected_images
+    ]
+    if not flattened_images:
+        print(f"No images found for class {class_name}")
+        return None, None
+    scaled_images = StandardScaler().fit_transform(flattened_images)
+    return scaled_images, pd.Series(selected_images, name='Image')
 
-        # K-Means Clustering
-        pca_clusters, pca_kmeans = apply_kmeans(pca_result, n_clusters=n_clusters)
-        tsne_clusters, tsne_kmeans = apply_kmeans(tsne_result, n_clusters=n_clusters)
-        umap_clusters, umap_kmeans = apply_kmeans(umap_result, n_clusters=n_clusters)
 
-        # Save results per class
-        save_dimensionality_reduction_results(pca_result, class_labels, 'PCA', path=os.path.join(path, class_name))
-        save_dimensionality_reduction_results(tsne_result, class_labels, 't-SNE', path=os.path.join(path, class_name))
-        save_dimensionality_reduction_results(umap_result, class_labels, 'UMAP', path=os.path.join(path, class_name))
+def create_result_dataframe(reduced_result, class_images, clusters):
+    df = pd.DataFrame(reduced_result, columns=['Component 1', 'Component 2'])
+    df['Image'] = class_images.iloc[:len(reduced_result)].values
+    df['Cluster'] = clusters
+    return df
 
-        # Visualize results for each class
-        visualize_results(pca_result, pca_clusters, class_labels, technique="PCA", n_clusters=n_clusters, save_path=os.path.join(path, class_name))
-        visualize_results(tsne_result, tsne_clusters, class_labels, technique="t-SNE", n_clusters=n_clusters, save_path=os.path.join(path, class_name))
-        visualize_results(umap_result, umap_clusters, class_labels, technique="UMAP", n_clusters=n_clusters, save_path=os.path.join(path, class_name))
 
-        print(f"Clustering and results saved for class: {class_name}")
+def visualize_results_per_class(df, method, class_name, save_path, show_plot=False):
+    fig = px.scatter(df, x='Component 1', y='Component 2', color='Cluster', hover_data={'Image': True},
+                     title=f'{method} with KMeans for Class {class_name}')
+    os.makedirs(save_path, exist_ok=True)
+    plot_path = os.path.join(save_path, f'{class_name}_{method.lower()}_visualization.html')
+    fig.write_html(plot_path)
+    if show_plot:
+        fig.show()
+    print(f'{method} visualization saved to {plot_path}')
+
+
+def dimensionality_reduction_per_class(image_dict, mushroom_data, class_name, method, save_path, show_plot=False, n_clusters=2):
+    scaled_images, class_images = flatten_and_scale_images(image_dict, mushroom_data, class_name)
+    if scaled_images is None:
+        return
+    reduced_result = apply_dimensionality_reduction(scaled_images, method)
+    clusters, kmeans_model = apply_kmeans(reduced_result, n_clusters)
+    df = create_result_dataframe(reduced_result, class_images, clusters)
+    visualize_results_per_class(df, method, class_name, save_path, show_plot)
+
+
+def process_per_class(image_dict, mushroom_data, class_names, save_base_path, methods=None, show_plot=True, n_clusters=2):
+    if methods is None:
+        methods = ['PCA', 't-SNE', 'UMAP']
+    for class_name in class_names:
+        print(f"Processing class: {class_name}")
+        class_path = os.path.join(save_base_path, class_name)
+        for method in methods:
+            print(f"  Using method: {method}")
+            dimensionality_reduction_per_class(image_dict, mushroom_data, class_name, method, class_path, show_plot, n_clusters)
+
