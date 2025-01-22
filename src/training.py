@@ -296,7 +296,7 @@ def get_efficientnet_model(num_classes, device):
 ############### CUSTOM MODELS ################
 
 class EnhancedResNet(nn.Module):
-    def __init__(self, num_classes=10, dropout_prob=0.5):
+    def __init__(self, num_classes=10, dropout_prob=0.5, weight_decay=1e-4):
         super(EnhancedResNet, self).__init__()
         self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Identity()
@@ -310,19 +310,24 @@ class EnhancedResNet(nn.Module):
         self.dropout = nn.Dropout(p=dropout_prob)
         self.fc1 = nn.Linear(2048, 1024)
         self.bn1 = nn.BatchNorm1d(1024)
-        self.fc2 = nn.Linear(1024, num_classes)
+        self.fc2 = nn.Linear(1024, 512)
+        self.bn2 = nn.BatchNorm1d(512)
+        self.fc3 = nn.Linear(512, num_classes)
 
     def forward(self, x):
         x = self.resnet(x)
         x = self.dropout(x)
         x = torch.relu(self.fc1(x))
         x = self.bn1(x)
-        x = self.fc2(x)
+        x = self.dropout(x)  
+        x = torch.relu(self.fc2(x))
+        x = self.bn2(x)
+        x = self.fc3(x)
         return x
 
 
 class EnhancedAlexNet(nn.Module):
-    def __init__(self, num_classes=10, dropout_prob=0.55):
+    def __init__(self, num_classes=10, dropout_prob=0.55, weight_decay=1e-4):
         super(EnhancedAlexNet, self).__init__()
 
         self.alexnet = models.alexnet(pretrained=True)
@@ -336,16 +341,23 @@ class EnhancedAlexNet(nn.Module):
 
         self.dropout = nn.Dropout(p=dropout_prob)
         self.fc1 = nn.Linear(256 * 6 * 6, 4096)
-        self.fc2 = nn.Linear(4096, num_classes)
+        self.bn1 = nn.BatchNorm1d(4096)
+        self.fc2 = nn.Linear(4096, 1024)
+        self.bn2 = nn.BatchNorm1d(1024)
+        self.fc3 = nn.Linear(1024, num_classes)
 
     def forward(self, x):
         x = self.alexnet.features(x)
         x = torch.flatten(x, 1)
         x = self.dropout(x)
         x = torch.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = self.bn1(x)
+        x = self.dropout(x)  
+        x = torch.relu(self.fc2(x))
+        x = self.bn2(x)
+        x = self.fc3(x)
         return x
-
+    
 
 def get_custom_alexnet(num_classes, device):
     model = EnhancedAlexNet(num_classes)
