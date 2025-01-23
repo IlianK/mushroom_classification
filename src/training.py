@@ -295,55 +295,55 @@ def get_efficientnet_model(num_classes, device):
 ############### CUSTOM MODELS ################
 
 class EnhancedResNet(nn.Module):
-    def __init__(self, num_classes=10, dropout_prob=0.5, weight_decay=1e-4):
+    def __init__(self, num_classes=10, dropout_prob=0.6):
         super(EnhancedResNet, self).__init__()
+        
         self.resnet = models.resnet50(pretrained=True)
-        self.resnet.fc = nn.Identity()
+        self.resnet.fc = nn.Identity()  
 
+
+        # Freeze all but last two layers
         for param in self.resnet.parameters():
             param.requires_grad = False
-        
+        for param in self.resnet.layer3.parameters():
+            param.requires_grad = True
         for param in self.resnet.layer4.parameters():
             param.requires_grad = True
 
+        # Simplified classifier head
         self.dropout = nn.Dropout(p=dropout_prob)
-        self.fc1 = nn.Linear(2048, 1024)
-        self.bn1 = nn.BatchNorm1d(1024)
-        self.fc2 = nn.Linear(1024, 512)
-        self.bn2 = nn.BatchNorm1d(512)
-        self.fc3 = nn.Linear(512, num_classes)
+        self.fc1 = nn.Linear(2048, 512)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.fc2 = nn.Linear(512, num_classes)
 
     def forward(self, x):
-        x = self.resnet(x)
+        x = self.resnet(x)  #
         x = self.dropout(x)
         x = torch.relu(self.fc1(x))
         x = self.bn1(x)
-        x = self.dropout(x)  
-        x = torch.relu(self.fc2(x))
-        x = self.bn2(x)
-        x = self.fc3(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
         return x
-
+    
 
 class EnhancedAlexNet(nn.Module):
-    def __init__(self, num_classes=10, dropout_prob=0.55, weight_decay=1e-4):
+    def __init__(self, num_classes=10, dropout_prob=0.6):
         super(EnhancedAlexNet, self).__init__()
 
         self.alexnet = models.alexnet(pretrained=True)
-        self.alexnet.classifier = nn.Identity()
-
-        for param in self.alexnet.parameters():
-            param.requires_grad = False
+        self.alexnet.classifier = nn.Identity() 
         
-        for param in self.alexnet.features.parameters():
+        # Freeze early feature extraction layers
+        for param in self.alexnet.features[:10]: 
             param.requires_grad = False
+        for param in self.alexnet.features[10:].parameters():
+            param.requires_grad = True
 
+        # Simplified classifier head 
         self.dropout = nn.Dropout(p=dropout_prob)
-        self.fc1 = nn.Linear(256 * 6 * 6, 4096)
-        self.bn1 = nn.BatchNorm1d(4096)
-        self.fc2 = nn.Linear(4096, 1024)
-        self.bn2 = nn.BatchNorm1d(1024)
-        self.fc3 = nn.Linear(1024, num_classes)
+        self.fc1 = nn.Linear(256 * 6 * 6, 1024)
+        self.bn1 = nn.BatchNorm1d(1024)
+        self.fc2 = nn.Linear(1024, num_classes)
 
     def forward(self, x):
         x = self.alexnet.features(x)
@@ -351,10 +351,8 @@ class EnhancedAlexNet(nn.Module):
         x = self.dropout(x)
         x = torch.relu(self.fc1(x))
         x = self.bn1(x)
-        x = self.dropout(x)  
-        x = torch.relu(self.fc2(x))
-        x = self.bn2(x)
-        x = self.fc3(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
         return x
 
 
