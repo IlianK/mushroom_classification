@@ -1,5 +1,10 @@
 # Mushroom Multiclass Classification
 
+## Requirement
+Git clone:  `git clone https://github.com/IlianK/mushroom_classification.git`
+ 
+Run: `pip install -r requirements.txt`
+
 ## Overview
 
 ### 1. `dataset`
@@ -72,3 +77,28 @@ This folder contains the final project documentation, including:
 ### 6. `event_reader.ipynb`
 - Notebook for exttracting events and displaying loss / accuracy plots of trained model logs.
 - Utilizes `event_reader.py` for function definitions
+
+
+## Model Setup and Training Configuration
+The notebook `training.ipynb` is used to load and fine-tune various models using the following parameters:
+
+```python
+SET_GET_MODEL = 'GET'   # Options: 'SET' or 'GET'
+WRITE = False           # True overwrites event files
+FINETUNE = True         # True = fine-tuning
+
+# Options: alexnet, resnet, vgg16, densenet, efficientnet
+#          custom_alexnet, custom_resnet
+model_type = 'custom_resnet'  
+```
+
+- **SET_GET_MODEL:**
+  - When set to `'SET'`, the model is initialized with pre-trained weights (not fine-tuned) and prepared for training.
+  - When set to `'GET'`, the fine-tuned model is loaded from the directory `BASELINE_FINE_DIR`.
+
+- **Model Options:**
+  - The baseline models can be used: `alexnet`, `resnet`, `vgg16`, `densenet`, `efficientnet`.
+  - Two further optimized custom models: `custom_alexnet`, `custom_resnet`.
+
+
+
