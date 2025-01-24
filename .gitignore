@@ -5,6 +5,7 @@ dataset
 via-2.0.12
 src/__pycache__
 *.pth
+*.7z
 models/zipped
 models/baselines/alexnet/log/
 models/baselines/densenet/log/
