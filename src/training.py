@@ -263,33 +263,53 @@ def evaluate_model(model, test_loader, criterion, device):
 
 def get_alexnet_model(num_classes, device):
     model = models.alexnet(weights=models.AlexNet_Weights.IMAGENET1K_V1)
+    for param in model.features.parameters():
+        param.requires_grad = False
+
     model.classifier[6] = nn.Linear(model.classifier[6].in_features, num_classes)
-    model = model.to(device)    
+    model = model.to(device)
     return model
+
 
 def get_resnet_model(num_classes, device):
     model = models.resnet50(weights='IMAGENET1K_V1')
+    for param in model.parameters():
+        param.requires_grad = False
+
     model.fc = nn.Linear(model.fc.in_features, num_classes)
-    model = model.to(device)    
+    model = model.to(device)
     return model
+
 
 def get_vgg16_model(num_classes, device):
     model = models.vgg16(weights='IMAGENET1K_V1')
+    for param in model.features.parameters():
+        param.requires_grad = False
+
     model.classifier[6] = nn.Linear(model.classifier[6].in_features, num_classes)
-    model = model.to(device) 
+    model = model.to(device)
     return model
+
 
 def get_densenet_model(num_classes, device):
     model = models.densenet121(weights='IMAGENET1K_V1')
+    for param in model.features.parameters():
+        param.requires_grad = False
+
     model.classifier = nn.Linear(model.classifier.in_features, num_classes)
     model = model.to(device)
     return model
 
+
 def get_efficientnet_model(num_classes, device):
     model = models.efficientnet_b0(weights='IMAGENET1K_V1')
+    for param in model.features.parameters():
+        param.requires_grad = False
+
     model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
     model = model.to(device)
     return model
+
 
 
 ############### CUSTOM MODELS ################
@@ -301,7 +321,6 @@ class EnhancedResNet(nn.Module):
         self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Identity()  
 
-
         # Freeze all but last two layers
         for param in self.resnet.parameters():
             param.requires_grad = False
@@ -310,7 +329,7 @@ class EnhancedResNet(nn.Module):
         for param in self.resnet.layer4.parameters():
             param.requires_grad = True
 
-        # Simplified classifier head
+        # Classifier head
         self.dropout = nn.Dropout(p=dropout_prob)
         self.fc1 = nn.Linear(2048, 512)
         self.bn1 = nn.BatchNorm1d(512)
@@ -333,13 +352,13 @@ class EnhancedAlexNet(nn.Module):
         self.alexnet = models.alexnet(pretrained=True)
         self.alexnet.classifier = nn.Identity() 
         
-        # Freeze early feature extraction layers
+        # Freeze early layers
         for param in self.alexnet.features[:10]: 
             param.requires_grad = False
         for param in self.alexnet.features[10:].parameters():
             param.requires_grad = True
 
-        # Simplified classifier head 
+        # Classifier head 
         self.dropout = nn.Dropout(p=dropout_prob)
         self.fc1 = nn.Linear(256 * 6 * 6, 1024)
         self.bn1 = nn.BatchNorm1d(1024)

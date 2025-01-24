@@ -86,7 +86,16 @@ def display_images_per_class(mushroom_data, image_dict, class_name, num_images=1
 
 def show_class_distribution(data):
     plt.figure(figsize=(10, 6))
-    sns.countplot(data=data, x='ClassName', order=data['ClassName'].value_counts().index)
+    ax = sns.countplot(data=data, x='ClassName', order=data['ClassName'].value_counts().index)
+    
+    for p in ax.patches:
+        count = int(p.get_height())  
+        ax.annotate(f'{count}', 
+                    (p.get_x() + p.get_width() / 2., p.get_height() / 2.), 
+                    ha='center', va='center', 
+                    fontsize=12, color='black', 
+                    textcoords='offset points', xytext=(0, 0))
+    
     plt.title("Class Distribution")
     plt.xticks(rotation=45)
     plt.show()
